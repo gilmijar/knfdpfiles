@@ -56,6 +56,9 @@ class Record:
         """Return the string representation of the whole record"""
         return f"{self.order}|{self.payload.render()}"
 
+    def __str__(self):
+        return self.render()
+
 
 class Position:
     """Represent a single position in the report"""
@@ -73,4 +76,6 @@ class Position:
         self.value_old = value_old
         self.value_now = value_now
     
-
+    def render(self):
+        # TODO implement render method for Position class
+        raise NotImplementedError("need to implement this")
