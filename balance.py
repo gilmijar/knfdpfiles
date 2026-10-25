@@ -4,10 +4,10 @@ objects for the DP1 report
 """
 
 class ReportField:
-    def __init__(self, field_type, field_size=None, field_decimals=None):
-        if field_type == 'N' and field_size is None:
-            raise ValueError("Numeric fields must have length specified")
-        self.type = field_type
+    def __init__(self, field_size, field_decimals=None):
+        if field_size is None:
+            raise ValueError("Fields must have length specified")
+        self.type = None
         self.size = field_size
         self.decimals = field_decimals
 
@@ -19,7 +19,52 @@ class ReportField:
         return getattr(obj, self.private_name)
 
     def __set__(self, obj, value):
-        # TODO add the actual validation - probably need to make subtypes of ReportField
+        raise NotImplementedError("Did you forget to implement the setter?")
+
+
+class FieldAlphaNumeric(ReportField):
+    def __set__(self, obj, value):
+        if len(value) > self.size:
+            raise ValueError(
+                "Alphanumeric field's value too big. "
+                f"{self.public_name} received a value of {len(value)} characters, "
+                f"but only {self.size} is allowed."
+            )
+        setattr(obj, self.private_name, value)
+
+
+class FieldNumeric(ReportField):
+    def __set__(self, obj, value):
+        if len(str(value)) > self.size:
+            raise ValueError(
+                "Numeric field's value too big. "
+                f"Tried to put '{value}' in {self.public_name}, "
+                f"which only allows {self.size} characters, including the sign."
+            )
+        setattr(obj, self.private_name, value)
+
+
+class FieldDecimal(ReportField):
+    DEC_SEP = ','
+
+    def __init__(self, field_size, field_decimals):
+        super().__init__(field_size, field_decimals)
+    
+    def __set__(self, obj, value):
+        value_string = str(value)
+        value_int, _, value_dec = value_string.partition(self.DEC_SEP)
+        if len(value_dec) > self.decimals:
+            raise ValueError(
+                "Decimal field has too many decimals. "
+                f"Tried to put '{value}' in {self.public_name}, "
+                f"which only allows {self.decimals} decimal places."
+            )
+        if len(value_int) > ( self.size-1-self.decimals ):
+            raise ValueError(
+                "Decimal field is too long. "
+                f"Tried to put '{value}' in {self.public_name}, "
+                f"which only allows {self.size} characters in all, including the sign."
+            )
         setattr(obj, self.private_name, value)
 
 
@@ -31,11 +76,11 @@ class Record:
     Can calculate its own checksum
     """
     CHECKSUM_ENCODING = 'ascii'
+    order = FieldNumeric(4)
 
     def __init__(self, order, payload):
-        # TODO move validation to descriptors
-        if order > 9999:
-            raise ValueError("order (line number) can have at most 4 digits")
+        if not payload:
+            raise ValueError("Record must have a value.")
         self.payload = payload
         self.order = order
 
@@ -47,14 +92,13 @@ class Record:
         (although the file is supposed to be encoded in cp1250)
         """
         rendered = self.render()
-        as_values = tuple(map(int, rendered.encode(self.CHECKSUM_ENCODING)))
-        sum_of_values = sum(as_values)
+        sum_of_values = sum(map(int, rendered.encode(self.CHECKSUM_ENCODING)))
         sum_of_positions = ( (len(rendered)+1) * len(rendered) ) // 2
         return sum_of_positions + sum_of_values
 
     def render(self):
         """Return the string representation of the whole record"""
-        return f"{self.order}|{self.payload.render()}"
+        return f"{self.order}|{self.payload}"
 
     def __str__(self):
         return self.render()
@@ -63,7 +107,8 @@ class Record:
 class Position:
     """Represent a single position in the report"""
     def __init__(self, code, name, value_old=None, value_now=None):
-        """Initialize the position
+        """
+            Initialize the position
 
             Parameters:
                 code: alphanumeric position code as defined in the KNF document
@@ -77,5 +122,7 @@ class Position:
         self.value_now = value_now
     
     def render(self):
-        # TODO implement render method for Position class
-        raise NotImplementedError("need to implement this")
+        return f"{self.code}|{self.value_old}|{self.value_now}|"
+
+    def __str__(self):
+        return self.render()
