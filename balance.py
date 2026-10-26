@@ -112,7 +112,7 @@ class Position:
 
             Parameters:
                 code: alphanumeric position code as defined in the KNF document
-                name: textual name/description of the osition as defined in the KNF document
+                name: textual name/description of the position as defined in the KNF document
                 value_old: alphanumeric, integer or decimal value of the position in previous quarter. Omit to leave unspecified (None)
                 value_now: alphanumeric, integer or decimal value of the position in current quarter. Omit to leave unspecified (None)
         """
@@ -122,7 +122,9 @@ class Position:
         self.value_now = value_now
     
     def render(self):
-        return f"{self.code}|{self.value_old}|{self.value_now}|"
+        old = self.value_old or 0
+        now = self.value_now or 0
+        return f"{self.code}|{old}|{now}|"
 
     def __str__(self):
         return self.render()

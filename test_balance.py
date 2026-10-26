@@ -37,3 +37,7 @@ class TestRecord(TestCase):
         order = 85
         with self.assertRaises(ValueError):
             balance.Record(order, "")
+
+class TestPosition(TestCase):
+    pass
+    # TODO: make some test cases for Position
